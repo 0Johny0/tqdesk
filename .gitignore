@@ -1,0 +1,15 @@
+# 运行产物
+__pycache__/
+*.pyc
+*.log
+*.db
+*.csv
+.DS_Store
+
+# 虚拟环境与环境变量（含 TQ 账号，严禁提交）
+.venv/
+venv/
+.env
+
+# 本地测试脚本（可能含账号，严禁提交）
+test_*.py

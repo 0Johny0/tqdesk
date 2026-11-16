@@ -1,0 +1,310 @@
+:root{
+  --bg:#0b0d11; --bg2:#0f1218; --surface:#141924; --line:#222837;
+  --text:#e9e6dd; --muted:#7b8296; --faint:#565d70;
+  --accent:#ffb454; --accent-dim:#8a6430;
+  --up:#ff5252; --down:#2ecc8f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+::selection{background:var(--accent);color:#141924}
+html,body{height:100%}
+body{
+  font-family:'Noto Sans SC','IBM Plex Mono',sans-serif;
+  color:var(--text); background:
+    radial-gradient(ellipse at 12% -10%, #1a2233 0%, transparent 55%),
+    radial-gradient(ellipse at 95% 110%, #241c10 0%, transparent 50%),
+    var(--bg);
+  overflow:hidden;
+}
+body::before{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:999; opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* ---------- 顶栏 ---------- */
+.topbar{
+  height:56px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 22px; border-bottom:1px solid var(--line);
+  background:rgba(11,13,17,.72); backdrop-filter:blur(6px);
+  position:relative; z-index:5;
+}
+.brand{display:flex; align-items:center; gap:12px}
+.brand .mark{width:14px;height:26px;background:var(--accent);transform:skewX(-12deg)}
+.brand h1{font-family:'Syne',sans-serif; font-size:15px; font-weight:800; letter-spacing:.22em}
+.brand span{font-size:11px; color:var(--muted); letter-spacing:.32em; margin-left:2px}
+.top-right{display:flex; align-items:center; gap:18px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.dot.on{background:var(--down); box-shadow:0 0 8px var(--down)}
+.dot.warn{background:var(--accent); box-shadow:0 0 8px var(--accent); animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.status{font-size:11px; letter-spacing:.18em; color:var(--muted)}
+.ghost-btn{
+  font:500 11px/1 'Noto Sans SC'; letter-spacing:.16em; color:var(--muted);
+  background:none; border:1px solid var(--line); padding:8px 14px; cursor:pointer;
+  transition:all .25s ease;
+}
+.ghost-btn:hover{color:var(--accent); border-color:var(--accent-dim); letter-spacing:.24em}
+.ghost-btn:disabled{opacity:.5; cursor:wait; letter-spacing:.16em}
+
+/* ---------- 三栏布局 ---------- */
+.shell{display:grid; grid-template-columns:290px minmax(0,1fr) 372px; height:calc(100vh - 56px)}
+.sidebar{border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; background:rgba(15,18,24,.4)}
+.mid{overflow-y:auto; padding:24px 26px 60px; display:flex; flex-direction:column; gap:20px; min-width:0}
+.rightbar{border-left:1px solid var(--line); overflow-y:auto; background:rgba(15,18,24,.4); padding:24px 22px 60px; display:flex; flex-direction:column; gap:18px}
+
+.sec-label{
+  font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.34em;
+  color:var(--faint); padding:18px 20px 10px; display:flex; gap:10px; align-items:center;
+}
+.sec-label b{color:var(--accent); font-weight:700}
+.sec-label .count{
+  margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:10px;
+  color:var(--accent); letter-spacing:.1em;
+}
+
+/* ---------- 左栏 ---------- */
+.search-wrap{padding:0 18px 12px; position:relative}
+.search-wrap input{
+  width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--text);
+  font:400 13px 'Noto Sans SC'; padding:10px 12px 10px 32px; outline:none;
+  transition:border-color .25s;
+}
+.search-wrap input:focus{border-color:var(--accent-dim)}
+.search-wrap::before{content:'⌕'; position:absolute; left:30px; top:8px; color:var(--faint); font-size:15px}
+.chips{display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 12px}
+.chip{
+  font:500 10px/1 'Noto Sans SC'; letter-spacing:.12em; color:var(--muted);
+  border:1px solid var(--line); background:none; padding:6px 10px; cursor:pointer; transition:all .2s;
+}
+.chip:hover{color:var(--text)}
+.chip.active{background:var(--accent); color:#16120a; border-color:var(--accent)}
+
+/* ---------- 自选合约栏 ---------- */
+.fav-list{
+  margin:0 12px 6px; padding:6px 0; border:1px solid var(--line);
+  background:rgba(255,180,84,.03); max-height:220px; overflow-y:auto;
+}
+.fav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 12px 9px 14px; cursor:pointer;
+  border-left:2px solid transparent; transition:background .2s, border-color .2s;
+}
+.fav-item:hover{background:rgba(255,180,84,.08)}
+.fav-item.active{background:rgba(255,180,84,.12); border-left-color:var(--accent)}
+.fav-body{flex:1; min-width:0}
+.fav-title{font-size:12.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.fav-title .p-code{font-family:'IBM Plex Mono',monospace; font-size:.82em; color:var(--muted); letter-spacing:.06em}
+.fav-sub{font-size:10px; color:var(--faint); letter-spacing:.06em; margin-top:2px}
+.fav-x{
+  opacity:0; font-size:13px; color:var(--faint); width:20px; height:20px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .18s; flex-shrink:0;
+}
+.fav-item:hover .fav-x{opacity:1}
+.fav-x:hover{color:var(--up); background:rgba(255,82,82,.12)}
+.fav-empty{padding:18px 16px; font-size:11px; color:var(--faint); letter-spacing:.12em; line-height:2; text-align:center}
+
+/* ---------- 品种列表 ---------- */
+.plist{flex:1; overflow-y:auto; border-top:1px solid var(--line)}
+.p-item{
+  display:flex; flex-direction:column; gap:3px; padding:10px 20px; cursor:pointer;
+  border-bottom:1px solid rgba(34,40,55,.5); border-left:2px solid transparent;
+  transition:background .2s, border-color .2s;
+}
+.p-item:hover{background:rgba(255,180,84,.05)}
+.p-item.active{background:rgba(255,180,84,.09); border-left-color:var(--accent)}
+.p-title{font-size:13.5px; font-weight:500; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.p-sub{font-size:10.5px; color:var(--faint); letter-spacing:.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.p-code{font-family:'IBM Plex Mono',monospace; font-size:.82em; color:var(--muted); letter-spacing:.06em; margin-left:2px}
+.p-item.active .p-code{color:var(--accent-dim)}
+
+/* ---------- 右栏快照 ---------- */
+.hero{border-top:2px solid var(--accent); background:var(--surface); padding:22px 22px 20px}
+.hero-head{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.hero-name{font-size:23px; font-weight:700; letter-spacing:.05em}
+.hero-sym{font:500 11px 'IBM Plex Mono'; color:var(--accent); letter-spacing:.12em}
+
+.fav-btn{
+  margin-left:auto; width:38px; height:38px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--bg2); border:1px solid var(--line); border-radius:50%;
+  font-size:17px; line-height:1; color:var(--faint); cursor:pointer;
+  transition:all .22s ease; user-select:none;
+}
+.fav-btn:hover{border-color:var(--accent-dim); transform:scale(1.08)}
+.fav-btn.on{
+  color:var(--accent); border-color:var(--accent-dim);
+  background:rgba(255,180,84,.1); text-shadow:0 0 12px rgba(255,180,84,.55);
+}
+.fav-btn.pop{animation:pop .32s ease}
+@keyframes pop{
+  0%{transform:scale(1)} 45%{transform:scale(1.35)} 100%{transform:scale(1)}
+}
+
+.contract-sel{
+  width:100%; margin-top:12px; background:var(--bg2); border:1px solid var(--line); color:var(--text);
+  font:400 12px 'IBM Plex Mono'; padding:9px 12px; outline:none; cursor:pointer;
+}
+.price-row{display:flex; align-items:baseline; gap:14px; margin-top:16px; flex-wrap:wrap}
+.big-price{font:600 42px/1 'IBM Plex Mono'; letter-spacing:-.01em}
+.big-price.up{color:var(--up)} .big-price.down{color:var(--down)}
+.chg{font:500 13px 'IBM Plex Mono'; padding:5px 10px; letter-spacing:.04em}
+.chg.up{color:var(--up); background:rgba(255,82,82,.1)}
+.chg.down{color:var(--down); background:rgba(46,204,143,.1)}
+.q-time{font:400 10.5px 'IBM Plex Mono'; color:var(--faint); letter-spacing:.06em; margin-top:10px; display:block}
+.switch{display:flex; align-items:center; gap:7px; font-size:10.5px; color:var(--muted); letter-spacing:.1em; cursor:pointer}
+.switch input{accent-color:var(--accent); cursor:pointer}
+.stats{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+  background:var(--line); border:1px solid var(--line); margin-top:16px;
+}
+.stat{background:var(--surface); padding:11px 12px}
+.stat .k{font-size:9.5px; letter-spacing:.2em; color:var(--faint); display:block; margin-bottom:5px}
+.stat .v{font:500 13.5px 'IBM Plex Mono'}
+.stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
+
+.spot-strip{margin-top:16px; border-top:1px dashed var(--line); padding-top:14px}
+.spot-title{font-family:'Syne',sans-serif; font-size:9.5px; letter-spacing:.3em; color:var(--faint); margin-bottom:10px}
+.spot-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.spot-cell .k{font-size:9.5px; letter-spacing:.18em; color:var(--faint); display:block; margin-bottom:4px}
+.spot-cell .v{font:500 15px 'IBM Plex Mono'}
+.spot-cell .v.up{color:var(--up)} .spot-cell .v.down{color:var(--down)}
+.spot-foot{font-size:10px; color:var(--faint); letter-spacing:.08em; margin-top:10px; line-height:1.8}
+
+/* ---------- 中栏 K线 ---------- */
+.kcard{background:var(--surface); border:1px solid var(--line); padding:20px 24px 24px}
+.k-head{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px}
+.k-title{font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.32em; color:var(--muted)}
+.seg{display:flex; border:1px solid var(--line)}
+.seg button{
+  font:500 11px 'IBM Plex Mono'; letter-spacing:.1em; color:var(--muted);
+  background:none; border:none; border-right:1px solid var(--line);
+  padding:9px 14px; cursor:pointer; transition:all .22s;
+}
+.seg button:last-child{border-right:none}
+.seg button:hover{color:var(--text); background:rgba(255,255,255,.03)}
+.seg button.active{background:var(--accent); color:#16120a}
+.k-tools{margin-left:auto; display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+select.mini{
+  background:var(--bg2); border:1px solid var(--line); color:var(--text);
+  font:400 11px 'IBM Plex Mono'; padding:8px 10px; outline:none;
+}
+.chart-wrap{position:relative; height:clamp(320px,50vh,520px); border:1px solid var(--line); background:var(--bg2)}
+.chart-wrap.hidden{display:none}
+#kchart{width:100%; height:100%; display:block}
+.tip{
+  position:absolute; pointer-events:none; display:none; z-index:3;
+  background:rgba(12,14,19,.94); border:1px solid var(--accent-dim); padding:10px 12px;
+  font:400 11px/1.8 'IBM Plex Mono'; color:var(--text); white-space:nowrap;
+}
+.tip b{color:var(--accent); font-weight:500}
+
+/* ---------- 明细表 ---------- */
+.tcard{background:var(--surface); border:1px solid var(--line); padding:20px 24px 10px}
+.tpl-row{display:flex; align-items:center; gap:10px; margin:14px 0 4px; flex-wrap:wrap}
+.tpl-row label{font-size:10px; letter-spacing:.22em; color:var(--faint)}
+.tpl-row input{
+  flex:1; min-width:260px; background:var(--bg2); border:1px solid var(--line); color:var(--accent);
+  font:400 11.5px 'IBM Plex Mono'; padding:8px 10px; outline:none;
+}
+.tpl-row input:focus{border-color:var(--accent-dim)}
+.tpl-hint{font-size:9.5px; color:var(--faint); letter-spacing:.05em; line-height:1.9; margin:6px 0 2px}
+.tpl-hint code{color:var(--muted); font-family:'IBM Plex Mono',monospace}
+.tbl-wrap{max-height:44vh; overflow-y:auto; margin-top:10px}
+table{width:100%; border-collapse:collapse; font:400 12px 'IBM Plex Mono'}
+thead th{
+  position:sticky; top:0; background:var(--surface); color:var(--faint);
+  font-weight:500; letter-spacing:.14em; font-size:10px; text-align:right;
+  padding:10px 10px; border-bottom:1px solid var(--line);
+}
+thead th:first-child{text-align:left}
+tbody td{padding:8px 10px; text-align:right; border-bottom:1px solid rgba(34,40,55,.45); color:var(--muted)}
+tbody td:first-child{text-align:left; color:var(--text)}
+tbody tr{cursor:copy}
+tbody tr:hover td{background:rgba(255,180,84,.08)}
+td.up{color:var(--up)} td.down{color:var(--down)}
+
+/* ---------- 登录 ---------- */
+.overlay{
+  position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+  background:rgba(8,10,14,.86); backdrop-filter:blur(10px);
+  transition:opacity .45s ease;
+}
+.overlay.hide{opacity:0; pointer-events:none}
+.login-box{
+  width:min(400px,90vw); border:1px solid var(--line); border-top:3px solid var(--accent);
+  background:var(--surface); padding:38px 36px 32px;
+}
+.login-box h2{font-family:'Syne',sans-serif; font-size:17px; letter-spacing:.26em; font-weight:800}
+.login-box p.sub{font-size:11.5px; color:var(--muted); letter-spacing:.14em; margin:10px 0 28px}
+.field{margin-bottom:16px}
+.field label{display:block; font-size:10px; letter-spacing:.28em; color:var(--faint); margin-bottom:8px}
+.field input{
+  width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--text);
+  font:400 14px 'IBM Plex Mono'; padding:12px 14px; outline:none; transition:border-color .25s;
+}
+.field input:focus{border-color:var(--accent)}
+.login-btn{
+  width:100%; margin-top:10px; background:var(--accent); color:#16120a; border:none;
+  font:700 12px 'Noto Sans SC'; letter-spacing:.32em; padding:14px; cursor:pointer;
+  transition:letter-spacing .3s ease, background .25s;
+}
+.login-btn:hover{letter-spacing:.48em}
+.login-btn:disabled{opacity:.5; cursor:wait}
+.login-err{color:var(--up); font-size:11.5px; margin-top:14px; min-height:16px; letter-spacing:.06em}
+.login-hint{font-size:10.5px; color:var(--faint); letter-spacing:.1em; margin-top:18px; line-height:1.9}
+
+/* ---------- 杂项 ---------- */
+#toast{
+  position:fixed; right:24px; bottom:24px; z-index:99; display:none;
+  background:var(--surface); border:1px solid var(--accent-dim); border-left:3px solid var(--accent);
+  padding:13px 18px; font-size:12px; color:var(--text); max-width:380px; letter-spacing:.05em;
+}
+.fade-up{opacity:0; transform:translateY(16px); animation:fadeUp .55s ease forwards}
+.fade-up:nth-child(2){animation-delay:.08s} .fade-up:nth-child(3){animation-delay:.16s}
+@keyframes fadeUp{to{opacity:1; transform:translateY(0)}}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a3040}
+::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
+@media(max-width:1280px){
+  body{overflow:auto}
+  .shell{grid-template-columns:250px minmax(0,1fr); height:auto}
+  .rightbar{grid-column:1 / -1; border-left:none; border-top:1px solid var(--line)}
+}
+@media(max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{max-height:44vh}
+}
+
+/* ---------- 自选行情价格（watch） ---------- */
+.fav-quote{margin-left:auto; text-align:right; flex-shrink:0}
+.fav-price{font:500 12.5px 'IBM Plex Mono',monospace; color:var(--muted)}
+.fav-price.up{color:var(--up)} .fav-price.down{color:var(--down)}
+.fav-pct{font:400 10px 'IBM Plex Mono',monospace; color:var(--faint); margin-top:2px}
+.fav-pct.up{color:var(--up)} .fav-pct.down{color:var(--down)}
+
+/* ---------- 进行中K线（未收完，弱化显示） ---------- */
+tr.forming td{opacity:.55}
+.doing{
+  font-style:normal; font-size:9px; letter-spacing:.15em; color:var(--accent);
+  border:1px solid var(--accent-dim); padding:1px 5px; margin-left:6px;
+}
+
+/* ---------- 自选拖拽排序 ---------- */
+.fav-item{cursor:grab}
+.fav-item:active{cursor:grabbing}
+.fav-item.dragging{opacity:.35}
+.fav-grip{
+  flex-shrink:0; font-size:11px; letter-spacing:1px; line-height:1;
+  color:var(--faint); opacity:.55; user-select:none;
+  transition:opacity .18s, color .18s;
+}
+.fav-item:hover .fav-grip{opacity:1; color:var(--accent-dim)}
+.fav-item{position:relative}
+.fav-item.drop-before::before,
+.fav-item.drop-after::after{
+  content:''; position:absolute; left:0; right:0; height:2px;
+  background:var(--accent); box-shadow:0 0 8px rgba(255,180,84,.5);
+}
+.fav-item.drop-before::before{top:-1px}
+.fav-item.drop-after::after{bottom:-1px}

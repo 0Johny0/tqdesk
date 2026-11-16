@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>天勤行情工作台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="overlay hide" id="loginOverlay">
+  <div class="login-box">
+    <h2>FUTURES DESK</h2>
+    <p class="sub">天勤行情工作台 · TQ TERMINAL</p>
+    <div class="field"><label>快期 / 天勤账号</label><input id="lu" autocomplete="username" placeholder="手机号 / 用户名"></div>
+    <div class="field"><label>密码</label><input id="lp" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="login-btn" id="loginBtn">连 接</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-hint">账号为快期/天勤免费注册账号，仅用于拉取行情数据。<br>凭据仅保存在本机内存，不写入磁盘。</div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="mark"></div>
+    <h1>FUTURES DESK</h1><span>天勤行情工作台</span>
+  </div>
+  <div class="top-right">
+    <div class="status" id="connText">未连接</div>
+    <div class="dot" id="connDot"></div>
+    <button class="ghost-btn" id="logoutBtn">断 开</button>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="sec-label"><b>01</b> 品种筛选</div>
+    <div class="search-wrap"><input id="pq" placeholder="搜索品种 / 名称 / 交易所"></div>
+    <div class="chips" id="exchChips"></div>
+
+    <div class="sec-label"><b>02</b> 自选合约 <span class="count" id="favCount">0</span></div>
+    <div class="fav-list" id="favList"></div>
+
+    <div class="sec-label"><b>03</b> 品种列表</div>
+    <div class="plist" id="plist"></div>
+  </aside>
+
+  <main class="mid">
+    <section class="kcard fade-up">
+      <div class="k-head">
+        <div class="k-title">05 &nbsp;K 线</div>
+        <div class="seg" id="periodSeg">
+          <button data-d="60">1分</button>
+          <button data-d="300">5分</button>
+          <button data-d="900">15分</button>
+          <button data-d="1800">30分</button>
+          <button data-d="3600">1时</button>
+          <button data-d="86400" class="active">日线</button>
+        </div>
+        <div class="k-tools">
+          <select class="mini" id="limitSel">
+            <option value="120" selected>120 根</option>
+            <option value="240">240 根</option>
+            <option value="500">500 根</option>
+          </select>
+          <button class="ghost-btn" id="refreshAll" title="刷新快照 / 现货 / K线">刷 新</button>
+          <label class="switch"><input type="checkbox" id="showChart"> 显示K线图</label>
+          <label class="switch" title="每 5 秒自动刷新快照，K 线每 10 秒同步"><input type="checkbox" id="autoQ"> 自动刷新</label>
+        </div>
+      </div>
+      <div class="chart-wrap hidden" id="chartWrap">
+        <canvas id="kchart"></canvas>
+        <div class="tip" id="tip"></div>
+      </div>
+    </section>
+
+    <section class="tcard fade-up">
+      <div class="k-title">06 &nbsp;K 线明细 · 点击任意行复制</div>
+      <div class="tpl-row">
+        <label>复制模板</label>
+        <input id="copyTpl" spellcheck="false">
+        <button class="ghost-btn" id="tplReset">恢复默认</button>
+      </div>
+      <div class="tpl-hint">
+        变量：<code>{start}</code> <code>{end}</code> <code>{start_full}</code> <code>{open}</code> <code>{close}</code> <code>{high}</code> <code>{low}</code> <code>{volume}</code> <code>{oi}</code> <code>{chg}</code>　
+        转义：<code>\t</code> 制表符 <code>\n</code> 换行　·　格式已持久化到本机
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>时间</th><th>开盘</th><th>收盘</th><th>最高</th><th>最低</th><th>成交量</th><th>持仓量</th><th>涨跌</th>
+          </tr></thead>
+          <tbody id="kTbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <aside class="rightbar">
+    <section class="hero fade-up">
+      <div class="sec-label" style="padding:0 0 12px"><b>04</b> 品种快照</div>
+      <div class="hero-head">
+        <div class="hero-name" id="qName">—</div>
+        <div class="hero-sym mono" id="qSym">—</div>
+        <button class="fav-btn" id="favBtn" title="点击加入/取消自选">♡</button>
+      </div>
+      <select class="contract-sel" id="contractSel"></select>
+      <div class="price-row">
+        <div class="big-price mono" id="qLast">--</div>
+        <div class="chg mono up" id="qChg">--</div>
+      </div>
+      <span class="q-time mono" id="qTime"></span>
+      <div class="stats" id="qStats"></div>
+      <div class="spot-strip">
+        <div class="spot-title">现货 / 基差</div>
+        <div class="spot-grid" id="spotBox">
+          <div class="spot-cell"><span class="k">加载中</span><span class="v">…</span></div>
+        </div>
+        <div class="spot-foot" id="spotFoot"></div>
+      </div>
+    </section>
+  </aside>
+
+</div>
+
+<script type="module" src="/static/js/app.js"></script>
+<script>
+  // 看门狗：模块启动失败时 3 秒后亮出登录框，避免页面假死
+  setTimeout(() => {
+    if (!window.__appBooted) {
+      const ov = document.getElementById('loginOverlay');
+      if (ov) {
+        ov.classList.remove('hide');
+        const err = document.getElementById('loginErr');
+        if (err) err.textContent = '前端脚本加载异常，请查看浏览器控制台（Cmd+Option+I）';
+      }
+    }
+  }, 3000);
+</script>
+</body>
+</html>
