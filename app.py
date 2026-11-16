@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """天勤行情工作台 · 入口（装配 + 启动）
 运行: python app.py  →  http://127.0.0.1:8848
-也可: uvicorn app:app --port 8848
+也可: uvicorn app:app --port 8848  （Docker 内如此，自动登录同样生效）
 """
 import os
 import threading
@@ -26,16 +26,19 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
     app.state.tq = svc
     warm_spot_table()               # 后台预热现货表，消除当天首查延迟
+
+    # 启动自动登录（环境变量 TQ_USER / TQ_PASS）
+    # 注意：必须放在这里而非 __main__ ——Docker 用 `uvicorn app:app` 启动时
+    # 本模块以 import 方式加载，__main__ 分支不会执行
+    u, p = os.environ.get("TQ_USER"), os.environ.get("TQ_PASS")
+    if u and p:
+        threading.Thread(
+            target=lambda: svc.call("login", u, p, timeout=60), daemon=True
+        ).start()
     return app
 
 
 app = create_app()
 
 if __name__ == "__main__":
-    # 可用环境变量实现启动自动登录：TQ_USER / TQ_PASS
-    u, p = os.environ.get("TQ_USER"), os.environ.get("TQ_PASS")
-    if u and p:
-        threading.Thread(
-            target=lambda: app.state.tq.call("login", u, p, timeout=60), daemon=True
-        ).start()
     uvicorn.run(app, host="127.0.0.1", port=8848)

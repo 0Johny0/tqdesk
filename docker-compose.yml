@@ -1,6 +1,5 @@
 services:
   tq-desk:
-    build: .
     image: <your-dockerhub-username>/tq-desk:latest
     container_name: tq-desk
     ports:
