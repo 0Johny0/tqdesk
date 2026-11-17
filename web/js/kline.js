@@ -107,7 +107,7 @@ function drawChart() {
   const n = Math.min(7, rows.length);
   for (let k = 0; k < n; k++) {
     const i = Math.round(k * (rows.length - 1) / (n - 1 || 1));
-    ctx.fillText(fmtTs(rows[i][0]), X(i), H - 8);
+    ctx.fillText(fmtTs(rows[i][0]), X(i), H - 8);   // 轴标签仍为开始时刻（图表惯例）
   }
 
   if (S.hoverIdx != null && S.hoverIdx >= 0 && S.hoverIdx < rows.length) {
@@ -134,7 +134,9 @@ function bindHover() {
     const chg = prev ? r[4] - prev[4] : null;
     const d = dec(r[4]);
     const forming = S.hoverIdx === rows.length - 1 && isForming(r[0], S.currentDur);
-    tip.innerHTML = `<b>${fmtTs(r[0])}${forming ? ' <span style="color:var(--accent)">进行中</span>' : ''}</b><br>
+    // 浮层时间与明细表一致：日内=结束时刻，日线=起始日期
+    const tLabel = S.currentDur >= 86400 ? fmtTs(r[0]) : fmtTs(r[0] + S.currentDur * 1000);
+    tip.innerHTML = `<b>${tLabel}${forming ? ' <span style="color:var(--accent)">进行中</span>' : ''}</b><br>
       开 ${fmt(r[1], d)} &nbsp; 收 <span style="color:${r[4] >= r[1] ? "#ff5252" : "#2ecc8f"}">${fmt(r[4], d)}</span><br>
       高 ${fmt(r[2], d)} &nbsp; 低 ${fmt(r[3], d)}<br>
       幅 ${chg == null ? "--" : (chg >= 0 ? "+" : "") + fmt(chg, 2)}<br>

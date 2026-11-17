@@ -11,5 +11,5 @@ __pycache__/
 venv/
 .env
 
-# 本地测试脚本（可能含账号，严禁提交）
-test_*.py
+# 本地使用说明
+readme.txt

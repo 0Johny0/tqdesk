@@ -48,7 +48,11 @@ fi
 
 # ---- 打标签并推送 ----
 git tag -a "v$V" -m "release v$V"
-git push origin main "v$V"
+if [ -n "${PROXY:-}" ]; then
+  git -c "http.proxy=$PROXY" -c "https.proxy=$PROXY" push origin main "v$V"
+else
+  git push origin main "v$V"
+fi
 
 # ---- 输出构建地址 ----
 REMOTE=$(git remote get-url origin | sed -E 's#(git@github\.com:|https://github\.com/|ssh://git@github\.com/)##; s#\.git$##')
