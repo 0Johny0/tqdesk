@@ -13,3 +13,6 @@ venv/
 
 # 本地使用说明
 readme.txt
+auto_release.command
+version_*
+*.sh

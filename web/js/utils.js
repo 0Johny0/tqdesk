@@ -31,13 +31,38 @@ export async function api(path, opt) {
   return j;
 }
 
-/* 判断某根 K 线是否"进行中"（尚未收完，数据还会变）
+/* 判断某根 K 线是否"进行中"（尚未收完）
    日内周期：未到 bar 结束时刻即进行中（11:04 时 11:00 的 15 分线 → true）
-   日线：再限定交易时段（夜盘 21 点后 / 凌晨 3 点前 / 日盘 9~15 点），避免收盘后误标 */
+   日线：bar 的交易日 == 当前交易日才进行中
+     交易日归属：21 点后 → 明天；凌晨 3 点前 → 今天(夜盘延续)；9:00~15:15 → 今天
+     bar 时间戳 +12h 归一化到交易日（兼容零点 / 前日21:00 两种惯例） */
 export function isForming(startMs, durSec) {
   const now = Date.now();
-  if (now >= startMs + durSec * 1000) return false;
-  if (durSec < 86400) return true;
-  const h = new Date(now).getHours();
-  return h >= 21 || h < 3 || (h >= 9 && h < 15);
+
+  if (durSec < 86400) {
+    return now < startMs + durSec * 1000;
+  }
+
+  // +12h：把 bar 时间戳归一到"交易日"（零点→当日中午；前日21:00→当日9点，日期都是交易日）
+  const barDay = new Date(startMs + 12 * 3600 * 1000);
+  barDay.setHours(0, 0, 0, 0);
+
+  const d = new Date(now);
+  const hm = d.getHours() + d.getMinutes() / 60;
+  const today = new Date(d);
+  today.setHours(0, 0, 0, 0);
+
+  if (hm >= 21) {
+    // 夜盘开盘：当日日线已收完，只有更晚日期的 bar（下一交易日）在进行中
+    return barDay.getTime() > today.getTime();
+  }
+  if (hm < 3) {
+    // 夜盘延续（凌晨）：今日交易日的 bar 进行中
+    return barDay.getTime() === today.getTime();
+  }
+  if (hm >= 9 && hm < 15.25) {
+    // 日盘：今日 bar 进行中
+    return barDay.getTime() === today.getTime();
+  }
+  return false;      // 非交易时段
 }
