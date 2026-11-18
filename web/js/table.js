@@ -23,7 +23,7 @@ function renderTable() {
     const chg = prev ? r[4] - prev[4] : null;
     const c = chg == null ? "" : (chg >= 0 ? "up" : "down");
     const d = dec(r[4]);
-    const forming = isForming(r[0], S.currentDur);       // 进行中：弱化 + 徽标
+    const forming = isForming(r[0], S.currentDur, S.currentSymbol);       // 进行中：弱化 + 徽标
     return `<tr class="${forming ? 'forming' : ''}" data-gi="${gi}" title="${forming ? '进行中 · 点击复制此行' : '点击复制此行'}">
       <td>${barTime(r)}${forming ? ' <i class="doing">进行中</i>' : ''}</td>
       <td>${fmt(r[1], d)}</td>

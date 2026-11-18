@@ -31,12 +31,24 @@ export async function api(path, opt) {
   return j;
 }
 
+/* 从合约代码取品种：KQ.m@CFFEX.T / CFFEX.T2603 -> "T" */
+function productOf(symbol) {
+  const m = String(symbol || "").match(/\.([A-Za-z]+)\d*$/);
+  return m ? m[1].toUpperCase() : "";
+}
+
+/* 日盘收盘时刻：商品/股指 15:00；国债期货(T/TF/TS/TL) 15:15 */
+const BOND_PRODUCTS = new Set(["T", "TF", "TS", "TL"]);
+function dayCloseHour(symbol) {
+  return BOND_PRODUCTS.has(productOf(symbol)) ? 15.25 : 15;
+}
+
 /* 判断某根 K 线是否"进行中"（尚未收完）
-   日内周期：未到 bar 结束时刻即进行中（11:04 时 11:00 的 15 分线 → true）
-   日线：bar 的交易日 == 当前交易日才进行中
-     交易日归属：21 点后 → 明天；凌晨 3 点前 → 今天(夜盘延续)；9:00~15:15 → 今天
+   日内周期：未到 bar 结束时刻即进行中
+   日线：bar 的交易日 == 当前交易日，且处于该品种的交易时段内
+     交易日归属：21 点后 → 明天；凌晨 3 点前 → 今天(夜盘延续)；9:00 ~ 收盘 → 今天
      bar 时间戳 +12h 归一化到交易日（兼容零点 / 前日21:00 两种惯例） */
-export function isForming(startMs, durSec) {
+export function isForming(startMs, durSec, symbol = "") {
   const now = Date.now();
 
   if (durSec < 86400) {
@@ -51,6 +63,7 @@ export function isForming(startMs, durSec) {
   const hm = d.getHours() + d.getMinutes() / 60;
   const today = new Date(d);
   today.setHours(0, 0, 0, 0);
+  const close = dayCloseHour(symbol);
 
   if (hm >= 21) {
     // 夜盘开盘：当日日线已收完，只有更晚日期的 bar（下一交易日）在进行中
@@ -60,9 +73,9 @@ export function isForming(startMs, durSec) {
     // 夜盘延续（凌晨）：今日交易日的 bar 进行中
     return barDay.getTime() === today.getTime();
   }
-  if (hm >= 9 && hm < 15.25) {
+  if (hm >= 9 && hm < close) {
     // 日盘：今日 bar 进行中
     return barDay.getTime() === today.getTime();
   }
-  return false;      // 非交易时段
+  return false;      // 收盘后 / 非交易时段
 }

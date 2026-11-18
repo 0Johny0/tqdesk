@@ -79,7 +79,7 @@ function drawChart() {
   rows.forEach((r, i) => {
     const [, o, h, l, c, v] = r;
     const up = c >= o, col = up ? "#ff5252" : "#2ecc8f";
-    const forming = i === nLast && isForming(r[0], S.currentDur);   // 最后一根可能进行中
+    const forming = i === nLast && isForming(r[0], S.currentDur, S.currentSymbol);   // 最后一根可能进行中
     const x = X(i);
     ctx.globalAlpha = forming ? 0.55 : 1;          // 进行中蜡烛弱化
     ctx.strokeStyle = col; ctx.lineWidth = 1;
@@ -133,7 +133,7 @@ function bindHover() {
     const prev = rows[S.hoverIdx - 1];
     const chg = prev ? r[4] - prev[4] : null;
     const d = dec(r[4]);
-    const forming = S.hoverIdx === rows.length - 1 && isForming(r[0], S.currentDur);
+    const forming = S.hoverIdx === rows.length - 1 && isForming(r[0], S.currentDur, S.currentSymbol);
     // 浮层时间与明细表一致：日内=结束时刻，日线=起始日期
     const tLabel = S.currentDur >= 86400 ? fmtTs(r[0]) : fmtTs(r[0] + S.currentDur * 1000);
     tip.innerHTML = `<b>${tLabel}${forming ? ' <span style="color:var(--accent)">进行中</span>' : ''}</b><br>
