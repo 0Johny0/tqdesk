@@ -37,7 +37,7 @@ export async function loadKline() {
       const justCompleted = sameCtx && prevState.forming &&
         (!forming || prevState.barTs !== last[0]);  // 同根转完成 | 新bar出现(旧bar已完)
       if (justCompleted && $('soundOn')?.checked) {
-        playBeep();
+        playBeep(parseFloat($('volRange')?.value || '12') / 100);
       }
       prevState = { sym: S.currentSymbol, dur: S.currentDur, barTs: last[0], forming };
     }
@@ -155,6 +155,7 @@ function bindHover() {
     const chg = prev ? r[4] - prev[4] : null;
     const d = dec(r[4]);
     const forming = S.hoverIdx === rows.length - 1 && isForming(r[0], S.currentDur, S.currentSymbol);
+    // 浮层时间与明细表一致：日内=结束时刻，日线=起始日期
     const tLabel = S.currentDur >= 86400 ? fmtTs(r[0]) : fmtTs(r[0] + S.currentDur * 1000);
     tip.innerHTML = `<b>${tLabel}${forming ? ' <span style="color:var(--accent)">进行中</span>' : ''}</b><br>
       开 ${fmt(r[1], d)} &nbsp; 收 <span style="color:${r[4] >= r[1] ? "#ff5252" : "#2ecc8f"}">${fmt(r[4], d)}</span><br>
@@ -172,11 +173,12 @@ function bindHover() {
 }
 
 /* ---------- 五项设置：持久化（localStorage）----------
-   kDur   K线周期   默认 86400 日线
-   kLimit K线根数   默认 120
-   kChart 显示K线图 默认 off
-   kAuto  自动刷新  默认 off
-   kSound 完成提示音 默认 on
+   kDur    K线周期    默认 86400 日线
+   kLimit  K线根数    默认 120
+   kChart  显示K线图  默认 off
+   kAuto   自动刷新   默认 off
+   kSound  声音提示   默认 on
+   kVolume 提示音量   默认 12 (0~50)
 ----------------------------------------------- */
 function restoreSettings() {
   const savedDur = parseInt(localStorage.getItem('kDur') || '86400', 10);
@@ -192,7 +194,12 @@ function restoreSettings() {
   if (showChart) $('chartWrap').classList.remove('hidden');
 
   $('autoQ').checked = localStorage.getItem('kAuto') === '1';
-  $('soundOn').checked = localStorage.getItem('kSound') !== '0';   // 默认开
+  $('soundOn').checked = localStorage.getItem('kSound') !== '0';
+
+  // 音量滑杆恢复
+  const savedVol = parseInt(localStorage.getItem('kVolume') || '12', 10);
+  $('volRange').value = String(Math.max(0, Math.min(50, savedVol)));
+  $('volValue').textContent = $('volRange').value + '%';
 }
 
 export function initKline() {
@@ -233,7 +240,16 @@ export function initKline() {
 
   $('soundOn').addEventListener('change', e => {
     localStorage.setItem('kSound', e.target.checked ? '1' : '0');
-    if (e.target.checked) playBeep();
+    if (e.target.checked) playBeep(parseFloat($('volRange')?.value || '12') / 100);
+  });
+
+  /* 音量滑杆：实时更新显示，松手持久化并试听 */
+  $('volRange').addEventListener('input', e => {
+    $('volValue').textContent = e.target.value + '%';
+  });
+  $('volRange').addEventListener('change', e => {
+    localStorage.setItem('kVolume', e.target.value);
+    playBeep(parseFloat(e.target.value) / 100);   // 松手试听
   });
 
   bus.on('selection', loadKline);

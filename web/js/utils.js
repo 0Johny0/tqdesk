@@ -79,22 +79,23 @@ export function isForming(startMs, durSec, symbol = "") {
 
 /* ---- K 线完成提示音：Web Audio 合成双音"叮"，无需音频文件 ---- */
 let _audioCtx = null;
-export function playBeep() {
+export function playBeep(vol = 0.12) {
+  if (vol <= 0) return;
   try {
     _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const t = _audioCtx.currentTime;
-    const mkTone = (freq, start, dur, vol) => {
+    const mkTone = (freq, start, dur, v) => {
       const osc = _audioCtx.createOscillator();
       const gain = _audioCtx.createGain();
       osc.connect(gain); gain.connect(_audioCtx.destination);
       osc.frequency.value = freq;
       osc.type = 'sine';
-      gain.gain.setValueAtTime(vol, start);
+      gain.gain.setValueAtTime(v, start);
       gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
       osc.start(start);
       osc.stop(start + dur + 0.01);
     };
-    mkTone(832, t, 0.06, 0.12);          // 第一音（Ab5）
-    mkTone(1247, t + 0.08, 0.10, 0.12);  // 第二音（Eb6），~180ms 收尾
+    mkTone(832, t, 0.06, vol);          // 第一音（Ab5）
+    mkTone(1247, t + 0.08, 0.10, vol);  // 第二音（Eb6）
   } catch (e) { /* 静音环境 / 浏览器限制时静默 */ }
 }

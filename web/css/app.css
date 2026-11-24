@@ -323,3 +323,23 @@ tr.forming td{opacity:.55}
 .gear-panel.open{display:flex}
 .gear-panel .switch{justify-content:flex-start; font-size:11px; cursor:pointer}
 .gear-panel .switch input{cursor:pointer}
+
+/* ---------- 音量滑杆 ---------- */
+.vol-row{display:flex; flex-direction:column; gap:8px; padding-top:4px; border-top:1px solid var(--line)}
+.vol-label{font-size:10px; letter-spacing:.18em; color:var(--faint)}
+.vol-label span{color:var(--accent); font-family:'IBM Plex Mono',monospace; margin-left:4px}
+.vol-slider{
+  width:100%; height:4px; -webkit-appearance:none; appearance:none;
+  background:var(--line); border-radius:2px; outline:none; cursor:pointer;
+}
+.vol-slider::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:14px; height:14px; border-radius:50%;
+  background:var(--accent); border:2px solid var(--surface);
+  cursor:pointer; box-shadow:0 0 6px rgba(255,180,84,.5);
+}
+.vol-slider::-moz-range-thumb{
+  width:14px; height:14px; border-radius:50%;
+  background:var(--accent); border:2px solid var(--surface);
+  cursor:pointer;
+}
