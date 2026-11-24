@@ -12,6 +12,11 @@ function renderTable() {
   const N = 80;
   const rows = S.chartRows.slice(-N);
   const base = S.chartRows.length - rows.length;
+
+  /* 按钮动态显示总根数（表里显示 80 根，实际可能加载 500 根） */
+  const all = S.chartRows.length;
+  $('copyAllBtn').textContent = all ? `复制全部(${all})` : '复制全部';
+
   if (!rows.length) {
     $('kTbody').innerHTML =
       `<tr><td colspan="8" style="text-align:center;color:var(--faint);cursor:default">暂无数据</td></tr>`;
@@ -23,7 +28,7 @@ function renderTable() {
     const chg = prev ? r[4] - prev[4] : null;
     const c = chg == null ? "" : (chg >= 0 ? "up" : "down");
     const d = dec(r[4]);
-    const forming = isForming(r[0], S.currentDur, S.currentSymbol);       // 进行中：弱化 + 徽标
+    const forming = isForming(r[0], S.currentDur, S.currentSymbol);
     return `<tr class="${forming ? 'forming' : ''}" data-gi="${gi}" title="${forming ? '进行中 · 点击复制此行' : '点击复制此行'}">
       <td>${barTime(r)}${forming ? ' <i class="doing">进行中</i>' : ''}</td>
       <td>${fmt(r[1], d)}</td>
@@ -50,9 +55,8 @@ function fallbackCopy(t) {
   document.body.removeChild(ta);
 }
 
-function copyRow(gi) {
-  const r = S.chartRows[gi];
-  if (!r) return;
+/* 按模板格式化一行（copyRow / copyAll 共用） */
+function formatRow(r, gi) {
   const daily = S.currentDur >= 86400;
   const startMs = r[0], endMs = startMs + S.currentDur * 1000;
   const fmtT = ms => {
@@ -80,9 +84,27 @@ function copyRow(gi) {
   for (const [k, v] of Object.entries(map)) tpl = tpl.split("{" + k + "}").join(v);
   // 兜底：旧模板 {start}-{end} 在日线下会渲染成 "X-X"，折叠为 "X"
   if (startStr === endStr) tpl = tpl.split(`${startStr}-${endStr}`).join(startStr);
-  tpl = tpl.replace(/\\t/g, "\t").replace(/\\n/g, "\n");
-  copyText(tpl);
-  toast("已复制：" + tpl.replace(/\t/g, "  |  "));
+  return tpl.replace(/\\t/g, "\t").replace(/\\n/g, "\n");
+}
+
+function copyRow(gi) {
+  const r = S.chartRows[gi];
+  if (!r) return;
+  const text = formatRow(r, gi);
+  copyText(text);
+  toast("已复制：" + text.replace(/\t/g, "  |  "));
+}
+
+/* 复制全部：按模板逐行渲染，换行拼接 */
+function copyAll() {
+  const rows = S.chartRows;
+  if (!rows.length) {
+    toast("暂无数据");
+    return;
+  }
+  const text = rows.map((r, gi) => formatRow(r, gi)).join("\n");
+  copyText(text);
+  toast(`已复制 ${rows.length} 根K线数据（按模板格式）`);
 }
 
 export function initTable() {
@@ -94,6 +116,9 @@ export function initTable() {
     localStorage.removeItem('copyTpl');
     toast('已恢复默认模板');
   });
+
+  $('copyAllBtn').addEventListener('click', copyAll);   // 新增
+
   $('kTbody').addEventListener('click', e => {
     const tr = e.target.closest('tr');
     if (!tr || tr.dataset.gi === undefined) return;
