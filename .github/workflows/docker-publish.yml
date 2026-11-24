@@ -44,3 +44,36 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Notify Bark / Telegram
+        if: always()
+        env:
+          STATUS: ${{ job.status }}
+          REF: ${{ github.ref_name }}
+          BARK_SERVER: ${{ secrets.BARK_SERVER }}
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          if [ "$STATUS" = "success" ]; then
+            TEXT="✅ TQ-Desk ${REF} 构建成功，镜像已推送 Docker Hub"
+          else
+            TEXT="❌ TQ-Desk ${REF} 构建失败，请检查 Actions 日志"
+          fi
+
+          # Bark（自建服务优先，未配则走官方 api.day.app）
+          if [ -n "$BARK_KEY" ]; then
+            SERVER="${BARK_SERVER:-https://api.day.app}"
+            SERVER="${SERVER%/}"                    # 去掉末尾斜杠，防止 //key 双斜杠
+            curl -sfk --max-time 10 \
+              "${SERVER}/${BARK_KEY}/TQ-Desk ${REF}/${TEXT}" \
+              || echo "(Bark 通知失败)"
+          fi
+
+          # Telegram
+          if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+            curl -sf --max-time 10 -X POST \
+              "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+              -d chat_id="${TG_CHAT_ID}" -d text="$TEXT" \
+              || echo "(Telegram 通知失败)"
+          fi
