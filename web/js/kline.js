@@ -1,13 +1,17 @@
-import { $, fmt, fmtTs, dec, toast, isQuietErr, isForming } from './utils.js';
+import { $, fmt, fmtTs, dec, toast, isQuietErr, isForming, playBeep } from './utils.js';
 import { S, bus } from './state.js';
 import { fetchKline } from './api.js';
 
 const VALID_DURS = [60, 300, 900, 1800, 3600, 86400];
 
+/* 完成检测：跟踪上一次最后一根 bar 的状态 */
+let prevState = null;   // { sym, dur, barTs, forming }
+
 /* 空态：无选中 / 加载失败 共用 */
 export function clearKline() {
   S.chartRows = [];
   S.hoverIdx = null;
+  prevState = null;
   $('tip').style.display = 'none';
   bus.emit('chart-updated');
 }
@@ -21,11 +25,28 @@ export async function loadKline() {
     if (my !== S.seqK) return;
     S.chartRows = (d.rows || []).filter(r => r[0] && r[1] != null);
     S.hoverIdx = null;
+
+    /* 检测"进行中 → 完成"转换，触发提示音 */
+    const rows = S.chartRows;
+    if (rows.length > 0) {
+      const last = rows[rows.length - 1];
+      const forming = isForming(last[0], S.currentDur, S.currentSymbol);
+      const sameCtx = prevState &&
+        prevState.sym === S.currentSymbol &&
+        prevState.dur === S.currentDur;
+      const justCompleted = sameCtx && prevState.forming &&
+        (!forming || prevState.barTs !== last[0]);  // 同根转完成 | 新bar出现(旧bar已完)
+      if (justCompleted && $('soundOn')?.checked) {
+        playBeep();
+      }
+      prevState = { sym: S.currentSymbol, dur: S.currentDur, barTs: last[0], forming };
+    }
+
     bus.emit('chart-updated');
   } catch (e) {
     if (my === S.seqK && !isQuietErr(e.message)) {
-      clearKline();                             // 留空兜底
-      toast("K线获取失败：" + e.message);         // 并弹提示
+      clearKline();
+      toast("K线获取失败：" + e.message);
     }
   }
 }
@@ -79,15 +100,15 @@ function drawChart() {
   rows.forEach((r, i) => {
     const [, o, h, l, c, v] = r;
     const up = c >= o, col = up ? "#ff5252" : "#2ecc8f";
-    const forming = i === nLast && isForming(r[0], S.currentDur, S.currentSymbol);   // 最后一根可能进行中
+    const forming = i === nLast && isForming(r[0], S.currentDur, S.currentSymbol);
     const x = X(i);
-    ctx.globalAlpha = forming ? 0.55 : 1;          // 进行中蜡烛弱化
+    ctx.globalAlpha = forming ? 0.55 : 1;
     ctx.strokeStyle = col; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, Y(h)); ctx.lineTo(x, Y(l)); ctx.stroke();
     const top = Y(Math.max(o, c)), bot = Y(Math.min(o, c));
     ctx.fillStyle = col;
     ctx.fillRect(x - bw / 2, top, bw, Math.max(1, bot - top));
-    ctx.globalAlpha = forming ? 0.2 : 0.42;        // 量能同步弱化
+    ctx.globalAlpha = forming ? 0.2 : 0.42;
     const vt = VY(v || 0);
     ctx.fillRect(x - bw / 2, vt, bw, padT + priceH + 10 + volH - vt);
     ctx.globalAlpha = 1;
@@ -107,7 +128,7 @@ function drawChart() {
   const n = Math.min(7, rows.length);
   for (let k = 0; k < n; k++) {
     const i = Math.round(k * (rows.length - 1) / (n - 1 || 1));
-    ctx.fillText(fmtTs(rows[i][0]), X(i), H - 8);   // 轴标签仍为开始时刻（图表惯例）
+    ctx.fillText(fmtTs(rows[i][0]), X(i), H - 8);
   }
 
   if (S.hoverIdx != null && S.hoverIdx >= 0 && S.hoverIdx < rows.length) {
@@ -134,7 +155,6 @@ function bindHover() {
     const chg = prev ? r[4] - prev[4] : null;
     const d = dec(r[4]);
     const forming = S.hoverIdx === rows.length - 1 && isForming(r[0], S.currentDur, S.currentSymbol);
-    // 浮层时间与明细表一致：日内=结束时刻，日线=起始日期
     const tLabel = S.currentDur >= 86400 ? fmtTs(r[0]) : fmtTs(r[0] + S.currentDur * 1000);
     tip.innerHTML = `<b>${tLabel}${forming ? ' <span style="color:var(--accent)">进行中</span>' : ''}</b><br>
       开 ${fmt(r[1], d)} &nbsp; 收 <span style="color:${r[4] >= r[1] ? "#ff5252" : "#2ecc8f"}">${fmt(r[4], d)}</span><br>
@@ -151,11 +171,12 @@ function bindHover() {
   });
 }
 
-/* ---------- 四项设置：持久化（localStorage）----------
+/* ---------- 五项设置：持久化（localStorage）----------
    kDur   K线周期   默认 86400 日线
    kLimit K线根数   默认 120
    kChart 显示K线图 默认 off
    kAuto  自动刷新  默认 off
+   kSound 完成提示音 默认 on
 ----------------------------------------------- */
 function restoreSettings() {
   const savedDur = parseInt(localStorage.getItem('kDur') || '86400', 10);
@@ -171,10 +192,20 @@ function restoreSettings() {
   if (showChart) $('chartWrap').classList.remove('hidden');
 
   $('autoQ').checked = localStorage.getItem('kAuto') === '1';
+  $('soundOn').checked = localStorage.getItem('kSound') !== '0';   // 默认开
 }
 
 export function initKline() {
   restoreSettings();
+
+  /* ⚙ 设置面板：开合 + 点外关闭 */
+  $('gearBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    $('gearPanel').classList.toggle('open');
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.gear-wrap')) $('gearPanel').classList.remove('open');
+  });
 
   document.querySelectorAll('#periodSeg button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#periodSeg button').forEach(x => x.classList.remove('active'));
@@ -198,6 +229,11 @@ export function initKline() {
 
   $('autoQ').addEventListener('change', e => {
     localStorage.setItem('kAuto', e.target.checked ? '1' : '0');
+  });
+
+  $('soundOn').addEventListener('change', e => {
+    localStorage.setItem('kSound', e.target.checked ? '1' : '0');
+    if (e.target.checked) playBeep();
   });
 
   bus.on('selection', loadKline);

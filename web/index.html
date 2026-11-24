@@ -70,8 +70,14 @@
             <option value="500">500 根</option>
           </select>
           <button class="ghost-btn" id="refreshAll" title="刷新快照 / 现货 / K线">刷 新</button>
-          <label class="switch"><input type="checkbox" id="showChart"> 显示K线图</label>
-          <label class="switch" title="每 5 秒自动刷新快照，K 线每 10 秒同步"><input type="checkbox" id="autoQ"> 自动刷新</label>
+          <div class="gear-wrap">
+            <button class="ghost-btn gear-btn" id="gearBtn" title="显示设置">⚙</button>
+            <div class="gear-panel" id="gearPanel">
+              <label class="switch"><input type="checkbox" id="showChart"> 显示K线图</label>
+              <label class="switch"><input type="checkbox" id="autoQ"> 自动刷新（快照5秒 / K线10秒）</label>
+              <label class="switch"><input type="checkbox" id="soundOn"> 声音提示（K线收完）</label>
+            </div>
+          </div>
         </div>
       </div>
       <div class="chart-wrap hidden" id="chartWrap">

@@ -308,3 +308,18 @@ tr.forming td{opacity:.55}
 }
 .fav-item.drop-before::before{top:-1px}
 .fav-item.drop-after::after{bottom:-1px}
+
+/* ---------- 设置弹出面板（⚙） ---------- */
+.gear-wrap{position:relative}
+.gear-btn{padding:8px 13px; font-size:15px; line-height:1}
+.gear-panel{
+  display:none; position:absolute; right:0; top:calc(100% + 10px);
+  background:var(--surface); border:1px solid var(--line);
+  border-top:2px solid var(--accent);
+  padding:16px 18px; z-index:10; min-width:220px;
+  flex-direction:column; gap:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.45);
+}
+.gear-panel.open{display:flex}
+.gear-panel .switch{justify-content:flex-start; font-size:11px; cursor:pointer}
+.gear-panel .switch input{cursor:pointer}

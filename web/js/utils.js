@@ -55,7 +55,7 @@ export function isForming(startMs, durSec, symbol = "") {
     return now < startMs + durSec * 1000;
   }
 
-  // +12h：把 bar 时间戳归一到"交易日"（零点→当日中午；前日21:00→当日9点，日期都是交易日）
+  // +12h：把 bar 时间戳归一到"交易日"
   const barDay = new Date(startMs + 12 * 3600 * 1000);
   barDay.setHours(0, 0, 0, 0);
 
@@ -66,16 +66,35 @@ export function isForming(startMs, durSec, symbol = "") {
   const close = dayCloseHour(symbol);
 
   if (hm >= 21) {
-    // 夜盘开盘：当日日线已收完，只有更晚日期的 bar（下一交易日）在进行中
     return barDay.getTime() > today.getTime();
   }
   if (hm < 3) {
-    // 夜盘延续（凌晨）：今日交易日的 bar 进行中
     return barDay.getTime() === today.getTime();
   }
   if (hm >= 9 && hm < close) {
-    // 日盘：今日 bar 进行中
     return barDay.getTime() === today.getTime();
   }
-  return false;      // 收盘后 / 非交易时段
+  return false;
+}
+
+/* ---- K 线完成提示音：Web Audio 合成双音"叮"，无需音频文件 ---- */
+let _audioCtx = null;
+export function playBeep() {
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = _audioCtx.currentTime;
+    const mkTone = (freq, start, dur, vol) => {
+      const osc = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(vol, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      osc.start(start);
+      osc.stop(start + dur + 0.01);
+    };
+    mkTone(832, t, 0.06, 0.12);          // 第一音（Ab5）
+    mkTone(1247, t + 0.08, 0.10, 0.12);  // 第二音（Eb6），~180ms 收尾
+  } catch (e) { /* 静音环境 / 浏览器限制时静默 */ }
 }
