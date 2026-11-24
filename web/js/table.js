@@ -95,14 +95,16 @@ function copyRow(gi) {
   toast("已复制：" + text.replace(/\t/g, "  |  "));
 }
 
-/* 复制全部：按模板逐行渲染，换行拼接 */
+/* 复制全部：按模板逐行渲染，换行拼接（模板自带尾部 \n 时避免双重换行） */
 function copyAll() {
   const rows = S.chartRows;
   if (!rows.length) {
     toast("暂无数据");
     return;
   }
-  const text = rows.map((r, gi) => formatRow(r, gi)).join("\n");
+  const text = rows
+    .map((r, gi) => formatRow(r, gi).replace(/\n+$/, ""))  // 去掉每行末尾多余的换行
+    .join("\n");
   copyText(text);
   toast(`已复制 ${rows.length} 根K线数据（按模板格式）`);
 }
