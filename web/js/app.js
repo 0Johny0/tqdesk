@@ -22,8 +22,44 @@ function refreshAll() {
   });
 }
 
+function initResizers() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+
+  function makeResizable(target, handle, key, minH, maxH) {
+    if (!target || !handle) return;
+    const saved = parseInt(localStorage.getItem(key) || '0', 10);
+    if (saved > 0) target.style.height = saved + 'px';
+
+    let startY, startH;
+    handle.addEventListener('mousedown', e => {
+      startY = e.clientY;
+      startH = target.offsetHeight;
+      handle.classList.add('dragging');
+      const onMove = ev => {
+        const h = Math.max(minH, Math.min(startH + (ev.clientY - startY), maxH));
+        target.style.height = h + 'px';
+        ev.preventDefault();
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        handle.classList.remove('dragging');
+        localStorage.setItem(key, String(target.offsetHeight));
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
+  }
+
+  const maxH = Math.max(400, sidebar.clientHeight - 60);
+  makeResizable($('favList'),  $('favResizer'),  'favListH', 60,  maxH);
+  makeResizable($('plist'),   $('plistResizer'), 'plistH',  100, maxH);
+}
+
 function init() {
-  window.__appBooted = true;      // 看门狗标记：模块图已正常启动
+  window.__appBooted = true;
 
   initAuth();
   initStatus();
@@ -33,6 +69,7 @@ function init() {
   initSpot();
   initKline();
   initTable();
+  initResizers();
 
   $('refreshAll').addEventListener('click', refreshAll);
 
