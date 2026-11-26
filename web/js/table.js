@@ -1,22 +1,21 @@
-import { $, fmt, fmtTs, dec, toast, isForming } from './utils.js';
+import { $, fmt, pad, dec, toast, isForming, tradingDay, barLabel } from './utils.js';
 import { S, bus } from './state.js';
 
-const DEFAULT_TPL = "{range}\\t{open}-{close}（{high}/{low}）\\t{volume}\\t{oi}";
+const DEFAULT_TPL_MIN = "{time_start}-{time_end}\\t{open}-{close}（{high}/{low}）\\t{volume}\\t{oi}";
+const DEFAULT_TPL_DAY = "{date}\\t{open}-{close}（{high}/{low}）\\t{volume}\\t{oi}";
 
-/* 显示用时间：日内 = K线结束时刻(开始+周期)；日线 = 起始日期（+86400 会跨到次日，不能用） */
-function barTime(r) {
-  return S.currentDur >= 86400 ? fmtTs(r[0]) : fmtTs(r[0] + S.currentDur * 1000);
-}
+/* 双模板存储 key 与默认值（随周期类型联动） */
+function tplKey()     { return S.currentDur >= 86400 ? 'copyTplDay' : 'copyTplMin'; }
+function tplDefault() { return S.currentDur >= 86400 ? DEFAULT_TPL_DAY : DEFAULT_TPL_MIN; }
+
+function loadTplInput() { $('copyTpl').value = localStorage.getItem(tplKey()) || tplDefault(); }
+function saveTpl()      { localStorage.setItem(tplKey(), $('copyTpl').value); }
 
 function renderTable() {
   const N = 80;
   const rows = S.chartRows.slice(-N);
   const base = S.chartRows.length - rows.length;
-
-  /* 按钮动态显示总根数（表里显示 80 根，实际可能加载 500 根） */
-  const all = S.chartRows.length;
-  $('copyAllBtn').textContent = all ? `复制全部(${all})` : '复制全部';
-
+  $('copyAllBtn').textContent = S.chartRows.length ? `复制全部(${S.chartRows.length})` : '复制全部';
   if (!rows.length) {
     $('kTbody').innerHTML =
       `<tr><td colspan="8" style="text-align:center;color:var(--faint);cursor:default">暂无数据</td></tr>`;
@@ -30,7 +29,7 @@ function renderTable() {
     const d = dec(r[4]);
     const forming = isForming(r[0], S.currentDur, S.currentSymbol);
     return `<tr class="${forming ? 'forming' : ''}" data-gi="${gi}" title="${forming ? '进行中 · 点击复制此行' : '点击复制此行'}">
-      <td>${barTime(r)}${forming ? ' <i class="doing">进行中</i>' : ''}</td>
+      <td>${barLabel(r[0], S.currentDur)}${forming ? ' <i class="doing">进行中</i>' : ''}</td>
       <td>${fmt(r[1], d)}</td>
       <td>${fmt(r[4], d)}</td>
       <td>${fmt(r[2], d)}</td>
@@ -55,35 +54,47 @@ function fallbackCopy(t) {
   document.body.removeChild(ta);
 }
 
-/* 按模板格式化一行（copyRow / copyAll 共用） */
+/* ---- 核心：按模板格式化一行（11 个变量，零分支）----
+   {date}       交易日（唯一推导）    {start}     完整起始
+   {end}        完整结束              {time_start} 钟表起始
+   {time_end}   钟表结束              {open} {close} {high} {low} {volume} {oi} {chg}
+   兼容兜底：{range} {start_full} */
 function formatRow(r, gi) {
-  const daily = S.currentDur >= 86400;
-  const startMs = r[0], endMs = startMs + S.currentDur * 1000;
-  const fmtT = ms => {
+  const startMs = r[0];
+  const endMs = startMs + S.currentDur * 1000;
+  const dateStr = tradingDay(startMs);
+
+  const fmtFull = ms => {
     const t = new Date(ms);
-    return daily
-      ? `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
-      : `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
   };
+  const fmtClock = ms => {
+    const t = new Date(ms);
+    return `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  };
+
   const prev = S.chartRows[gi - 1];
   const chg = prev ? r[4] - prev[4] : null;
   const d = dec(r[4]);
-  const startStr = fmtT(startMs);
-  const endStr = fmtT(daily ? startMs : endMs);        // 日线结束日期=开始日期
+  const tc = fmtClock(startMs), te = fmtClock(endMs);
+
   const map = {
-    start: startStr,
-    end: endStr,
-    range: startStr === endStr ? startStr : `${startStr}-${endStr}`,  // 日线合并为单日期
-    start_full: fmtTs(startMs),
+    date: dateStr,
+    start: fmtFull(startMs),
+    end: fmtFull(endMs),
+    time_start: tc,
+    time_end: te,
+    // 旧变量映射兜底
+    range: S.currentDur >= 86400 ? dateStr : `${tc}-${te}`,
+    start_full: fmtFull(startMs),
+    // 价格量仓
     open: fmt(r[1], d), close: fmt(r[4], d),
     high: fmt(r[2], d), low: fmt(r[3], d),
     volume: fmt(r[5], 0), oi: fmt(r[6], 0),
     chg: chg == null ? "--" : (chg >= 0 ? "+" : "") + fmt(chg, 2),
   };
-  let tpl = $('copyTpl').value || DEFAULT_TPL;
+  let tpl = $('copyTpl').value || tplDefault();
   for (const [k, v] of Object.entries(map)) tpl = tpl.split("{" + k + "}").join(v);
-  // 兜底：旧模板 {start}-{end} 在日线下会渲染成 "X-X"，折叠为 "X"
-  if (startStr === endStr) tpl = tpl.split(`${startStr}-${endStr}`).join(startStr);
   return tpl.replace(/\\t/g, "\t").replace(/\\n/g, "\n");
 }
 
@@ -95,36 +106,40 @@ function copyRow(gi) {
   toast("已复制：" + text.replace(/\t/g, "  |  "));
 }
 
-/* 复制全部：按模板逐行渲染，换行拼接（模板自带尾部 \n 时避免双重换行） */
 function copyAll() {
   const rows = S.chartRows;
-  if (!rows.length) {
-    toast("暂无数据");
-    return;
-  }
-  const text = rows
-    .map((r, gi) => formatRow(r, gi).replace(/\n+$/, ""))  // 去掉每行末尾多余的换行
-    .join("\n");
+  if (!rows.length) { toast("暂无数据"); return; }
+  const text = rows.map((r, gi) => formatRow(r, gi).replace(/\n+$/, "")).join("\n");
   copyText(text);
   toast(`已复制 ${rows.length} 根K线数据（按模板格式）`);
 }
 
 export function initTable() {
-  $('copyTpl').value = localStorage.getItem('copyTpl') || DEFAULT_TPL;
-  $('copyTpl').addEventListener('change', () => localStorage.setItem('copyTpl', $('copyTpl').value));
-  $('copyTpl').addEventListener('blur', () => localStorage.setItem('copyTpl', $('copyTpl').value));
-  $('tplReset').addEventListener('click', () => {
-    $('copyTpl').value = DEFAULT_TPL;
+  // 迁移旧 key: copyTpl → copyTplMin + copyTplDay
+  const legacy = localStorage.getItem('copyTpl');
+  if (legacy) {
+    localStorage.setItem('copyTplMin', legacy);
+    localStorage.setItem('copyTplDay', legacy);
     localStorage.removeItem('copyTpl');
+  }
+
+  loadTplInput();
+
+  $('copyTpl').addEventListener('change', saveTpl);
+  $('copyTpl').addEventListener('blur', saveTpl);
+  $('tplReset').addEventListener('click', () => {
+    localStorage.removeItem(tplKey());
+    $('copyTpl').value = tplDefault();
     toast('已恢复默认模板');
   });
-
-  $('copyAllBtn').addEventListener('click', copyAll);   // 新增
+  $('copyAllBtn').addEventListener('click', copyAll);
 
   $('kTbody').addEventListener('click', e => {
     const tr = e.target.closest('tr');
     if (!tr || tr.dataset.gi === undefined) return;
     copyRow(+tr.dataset.gi);
   });
+
   bus.on('chart-updated', renderTable);
+  bus.on('period-change', loadTplInput);   // 切换周期 → 切换模板输入框内容
 }

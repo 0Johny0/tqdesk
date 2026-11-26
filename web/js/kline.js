@@ -1,11 +1,11 @@
-import { $, fmt, fmtTs, dec, toast, isQuietErr, isForming, playBeep } from './utils.js';
+import { $, fmt, fmtTs, dec, toast, isQuietErr, isForming, playBeep, barLabel } from './utils.js';
 import { S, bus } from './state.js';
 import { fetchKline } from './api.js';
 
 const VALID_DURS = [60, 300, 900, 1800, 3600, 86400];
 
 /* 完成检测：跟踪上一次最后一根 bar 的状态 */
-let prevState = null;   // { sym, dur, barTs, forming }
+let prevState = null;
 
 /* 空态：无选中 / 加载失败 共用 */
 export function clearKline() {
@@ -35,7 +35,7 @@ export async function loadKline() {
         prevState.sym === S.currentSymbol &&
         prevState.dur === S.currentDur;
       const justCompleted = sameCtx && prevState.forming &&
-        (!forming || prevState.barTs !== last[0]);  // 同根转完成 | 新bar出现(旧bar已完)
+        (!forming || prevState.barTs !== last[0]);
       if (justCompleted && $('soundOn')?.checked) {
         playBeep(parseFloat($('volRange')?.value || '12') / 100);
       }
@@ -155,8 +155,7 @@ function bindHover() {
     const chg = prev ? r[4] - prev[4] : null;
     const d = dec(r[4]);
     const forming = S.hoverIdx === rows.length - 1 && isForming(r[0], S.currentDur, S.currentSymbol);
-    // 浮层时间与明细表一致：日内=结束时刻，日线=起始日期
-    const tLabel = S.currentDur >= 86400 ? fmtTs(r[0]) : fmtTs(r[0] + S.currentDur * 1000);
+    const tLabel = barLabel(r[0], S.currentDur);
     tip.innerHTML = `<b>${tLabel}${forming ? ' <span style="color:var(--accent)">进行中</span>' : ''}</b><br>
       开 ${fmt(r[1], d)} &nbsp; 收 <span style="color:${r[4] >= r[1] ? "#ff5252" : "#2ecc8f"}">${fmt(r[4], d)}</span><br>
       高 ${fmt(r[2], d)} &nbsp; 低 ${fmt(r[3], d)}<br>
@@ -172,7 +171,7 @@ function bindHover() {
   });
 }
 
-/* ---------- 五项设置：持久化（localStorage）----------
+/* ---------- 六项设置：持久化（localStorage）----------
    kDur    K线周期    默认 86400 日线
    kLimit  K线根数    默认 120
    kChart  显示K线图  默认 off
@@ -196,7 +195,6 @@ function restoreSettings() {
   $('autoQ').checked = localStorage.getItem('kAuto') === '1';
   $('soundOn').checked = localStorage.getItem('kSound') !== '0';
 
-  // 音量滑杆恢复
   const savedVol = parseInt(localStorage.getItem('kVolume') || '12', 10);
   $('volRange').value = String(Math.max(0, Math.min(50, savedVol)));
   $('volValue').textContent = $('volRange').value + '%';
@@ -219,6 +217,7 @@ export function initKline() {
     b.classList.add('active');
     S.currentDur = +b.dataset.d;
     localStorage.setItem('kDur', String(S.currentDur));
+    bus.emit('period-change');              // 通知 table 切换模板
     loadKline();
   }));
 
@@ -243,13 +242,12 @@ export function initKline() {
     if (e.target.checked) playBeep(parseFloat($('volRange')?.value || '12') / 100);
   });
 
-  /* 音量滑杆：实时更新显示，松手持久化并试听 */
   $('volRange').addEventListener('input', e => {
     $('volValue').textContent = e.target.value + '%';
   });
   $('volRange').addEventListener('change', e => {
     localStorage.setItem('kVolume', e.target.value);
-    playBeep(parseFloat(e.target.value) / 100);   // 松手试听
+    playBeep(parseFloat(e.target.value) / 100);
   });
 
   bus.on('selection', loadKline);

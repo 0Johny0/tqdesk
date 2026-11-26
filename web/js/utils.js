@@ -45,39 +45,26 @@ function dayCloseHour(symbol) {
 
 /* 判断某根 K 线是否"进行中"（尚未收完）
    日内周期：未到 bar 结束时刻即进行中
-   日线：bar 的交易日 == 当前交易日，且处于该品种的交易时段内
-     交易日归属：21 点后 → 明天；凌晨 3 点前 → 今天(夜盘延续)；9:00 ~ 收盘 → 今天
-     bar 时间戳 +12h 归一化到交易日（兼容零点 / 前日21:00 两种惯例） */
+   日线：bar 的交易日 == 当前交易日，且处于该品种的交易时段内 */
 export function isForming(startMs, durSec, symbol = "") {
   const now = Date.now();
-
   if (durSec < 86400) {
     return now < startMs + durSec * 1000;
   }
-
-  // +12h：把 bar 时间戳归一到"交易日"
   const barDay = new Date(startMs + 12 * 3600 * 1000);
   barDay.setHours(0, 0, 0, 0);
-
   const d = new Date(now);
   const hm = d.getHours() + d.getMinutes() / 60;
   const today = new Date(d);
   today.setHours(0, 0, 0, 0);
   const close = dayCloseHour(symbol);
-
-  if (hm >= 21) {
-    return barDay.getTime() > today.getTime();
-  }
-  if (hm < 3) {
-    return barDay.getTime() === today.getTime();
-  }
-  if (hm >= 9 && hm < close) {
-    return barDay.getTime() === today.getTime();
-  }
+  if (hm >= 21) return barDay.getTime() > today.getTime();
+  if (hm < 3) return barDay.getTime() === today.getTime();
+  if (hm >= 9 && hm < close) return barDay.getTime() === today.getTime();
   return false;
 }
 
-/* ---- K 线完成提示音：Web Audio 合成双音"叮"，无需音频文件 ---- */
+/* ---- K 线完成提示音：Web Audio 合成双音"叮" ---- */
 let _audioCtx = null;
 export function playBeep(vol = 0.12) {
   if (vol <= 0) return;
@@ -95,7 +82,29 @@ export function playBeep(vol = 0.12) {
       osc.start(start);
       osc.stop(start + dur + 0.01);
     };
-    mkTone(832, t, 0.06, vol);          // 第一音（Ab5）
-    mkTone(1247, t + 0.08, 0.10, vol);  // 第二音（Eb6）
-  } catch (e) { /* 静音环境 / 浏览器限制时静默 */ }
+    mkTone(832, t, 0.06, vol);
+    mkTone(1247, t + 0.08, 0.10, vol);
+  } catch (e) { /* 静默 */ }
+}
+
+/* ---- 交易日推导（日期归属，与 isForming 共用同一 +12h 技巧）----
+   规则：date(ts + 12h)，周末顺延至下周一
+   例：11-17 23:55 bar → 交易日 11-18；周五 22:45 bar → 周一 */
+export function tradingDay(ts) {
+  const d = new Date(ts + 12 * 3600 * 1000);
+  d.setHours(0, 0, 0, 0);
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/* bar 展示标签（明细表时间列 / 十字光标浮层共用）
+   日线 = 交易日（2026-11-18）
+   日内 = 交易日短格式 + 结束钟表时刻（11-18 22:50） */
+export function barLabel(startMs, durSec) {
+  const td = tradingDay(startMs);
+  if (durSec >= 86400) return td;
+  const t = new Date(startMs + durSec * 1000);
+  return `${td.slice(5)} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
 }
