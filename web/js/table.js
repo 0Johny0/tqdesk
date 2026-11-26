@@ -1,10 +1,9 @@
-import { $, fmt, pad, dec, toast, isForming, tradingDay, barLabel } from './utils.js';
+import { $, fmt, pad, dec, toast, isForming, naturalDate, barLabel } from './utils.js';
 import { S, bus } from './state.js';
 
 const DEFAULT_TPL_MIN = "{time_start}-{time_end}\\t{open}-{close}（{high}/{low}）\\t{volume}\\t{oi}";
 const DEFAULT_TPL_DAY = "{date}\\t{open}-{close}（{high}/{low}）\\t{volume}\\t{oi}";
 
-/* 双模板存储 key 与默认值（随周期类型联动） */
 function tplKey()     { return S.currentDur >= 86400 ? 'copyTplDay' : 'copyTplMin'; }
 function tplDefault() { return S.currentDur >= 86400 ? DEFAULT_TPL_DAY : DEFAULT_TPL_MIN; }
 
@@ -55,14 +54,14 @@ function fallbackCopy(t) {
 }
 
 /* ---- 核心：按模板格式化一行（11 个变量，零分支）----
-   {date}       交易日（唯一推导）    {start}     完整起始
-   {end}        完整结束              {time_start} 钟表起始
-   {time_end}   钟表结束              {open} {close} {high} {low} {volume} {oi} {chg}
+   {date}       自然日                        {start}     完整起始
+   {end}        完整结束                      {time_start} 钟表起始
+   {time_end}   钟表结束                      {open} {close} {high} {low} {volume} {oi} {chg}
    兼容兜底：{range} {start_full} */
 function formatRow(r, gi) {
   const startMs = r[0];
   const endMs = startMs + S.currentDur * 1000;
-  const dateStr = tradingDay(startMs);
+  const dateStr = naturalDate(startMs);
 
   const fmtFull = ms => {
     const t = new Date(ms);
@@ -141,5 +140,5 @@ export function initTable() {
   });
 
   bus.on('chart-updated', renderTable);
-  bus.on('period-change', loadTplInput);   // 切换周期 → 切换模板输入框内容
+  bus.on('period-change', loadTplInput);
 }
