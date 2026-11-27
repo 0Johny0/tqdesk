@@ -9,7 +9,6 @@ const STAT_DEFS = [
   ["涨停", "up_limit"], ["跌停", "down_limit"],
 ];
 
-/* 空态：无选中 / 加载失败 共用 */
 export function clearQuote() {
   $('qSym').textContent = '—';
   $('qLast').textContent = '--';
@@ -19,6 +18,7 @@ export function clearQuote() {
   $('qTime').textContent = '';
   $('qStats').innerHTML = STAT_DEFS.map(([k]) =>
     `<div class="stat"><span class="k">${k}</span><span class="v mono">--</span></div>`).join("");
+  bus.emit('quote-updated');             // 空态也算到位
 }
 
 export async function loadQuote() {
@@ -26,7 +26,7 @@ export async function loadQuote() {
   const my = ++S.seqQ;
   try {
     const q = await fetchQuote(S.currentSymbol);
-    if (my !== S.seqQ) return;                 // 丢弃过期响应
+    if (my !== S.seqQ) return;
     const base = q.pre_settle ?? q.pre_close;
     const chg = (q.last != null && base != null) ? q.last - base : null;
     const pct = (chg != null && base) ? chg / base * 100 : null;
@@ -43,10 +43,11 @@ export async function loadQuote() {
       const c = (f === "high" || f === "up_limit") ? "up" : (f === "low" || f === "down_limit") ? "down" : "";
       return `<div class="stat"><span class="k">${k}</span><span class="v mono ${c}">${v == null ? "--" : fmt(v, dec(v))}</span></div>`;
     }).join("");
+    bus.emit('quote-updated');           // 右栏到位
   } catch (e) {
     if (my === S.seqQ && !isQuietErr(e.message)) {
-      clearQuote();                             // 留空兜底
-      toast("快照获取失败：" + e.message);        // 并弹提示
+      clearQuote();
+      toast("快照获取失败：" + e.message);
     }
   }
 }
@@ -59,6 +60,6 @@ export function initQuote() {
   setInterval(() => {
     if (!$('autoQ').checked || !S.currentSymbol || S.refreshing) return;
     loadQuote();
-    if (++tick % 2 === 0) loadKline();     // 每 2 轮（10 秒）同步一次 K 线（后端热订阅，增量刷新）
+    if (++tick % 2 === 0) loadKline();
   }, 5000);
 }

@@ -4,12 +4,11 @@ import { fetchKline } from './api.js';
 
 const VALID_DURS = [60, 300, 900, 1800, 3600, 86400];
 
-/* 完成检测：跟踪上一次最后一根 bar 的状态 */
 let prevState = null;
 
-/* 空态：无选中 / 加载失败 共用 */
 export function clearKline() {
   S.chartRows = [];
+  S.chartOwner = null;
   S.hoverIdx = null;
   prevState = null;
   $('tip').style.display = 'none';
@@ -24,9 +23,9 @@ export async function loadKline() {
     const d = await fetchKline(S.currentSymbol, S.currentDur, lim);
     if (my !== S.seqK) return;
     S.chartRows = (d.rows || []).filter(r => r[0] && r[1] != null);
+    S.chartOwner = { sym: S.currentSymbol, dur: S.currentDur };
     S.hoverIdx = null;
 
-    /* 检测"进行中 → 完成"转换，触发提示音 */
     const rows = S.chartRows;
     if (rows.length > 0) {
       const last = rows[rows.length - 1];
@@ -171,14 +170,6 @@ function bindHover() {
   });
 }
 
-/* ---------- 六项设置：持久化（localStorage）----------
-   kDur    K线周期    默认 86400 日线
-   kLimit  K线根数    默认 120
-   kChart  显示K线图  默认 off
-   kAuto   自动刷新   默认 off
-   kSound  声音提示   默认 on
-   kVolume 提示音量   默认 12 (0~50)
------------------------------------------------ */
 function restoreSettings() {
   const savedDur = parseInt(localStorage.getItem('kDur') || '86400', 10);
   S.currentDur = VALID_DURS.includes(savedDur) ? savedDur : 86400;
@@ -203,7 +194,6 @@ function restoreSettings() {
 export function initKline() {
   restoreSettings();
 
-  /* ⚙ 设置面板：开合 + 点外关闭 */
   $('gearBtn').addEventListener('click', e => {
     e.stopPropagation();
     $('gearPanel').classList.toggle('open');
@@ -217,7 +207,7 @@ export function initKline() {
     b.classList.add('active');
     S.currentDur = +b.dataset.d;
     localStorage.setItem('kDur', String(S.currentDur));
-    bus.emit('period-change');              // 通知 table 切换模板
+    bus.emit('period-change');
     loadKline();
   }));
 

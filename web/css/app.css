@@ -364,3 +364,13 @@ tr.forming td{opacity:.55}
   .shell{grid-template-columns:1fr}
   .sidebar{max-height:44vh}
 }
+
+/* ---------- 数据更新中标记（切换品种时旧数据弱化） ---------- */
+.stale{
+  opacity:.45; transition:opacity .3s ease; position:relative;
+}
+.stale::before{
+  content:'更新中…'; position:absolute; top:10px; right:14px;
+  color:var(--accent); font:400 10px 'IBM Plex Mono',monospace;
+  letter-spacing:.15em; z-index:2; pointer-events:none;
+}

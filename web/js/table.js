@@ -10,6 +10,15 @@ function tplDefault() { return S.currentDur >= 86400 ? DEFAULT_TPL_DAY : DEFAULT
 function loadTplInput() { $('copyTpl').value = localStorage.getItem(tplKey()) || tplDefault(); }
 function saveTpl()      { localStorage.setItem(tplKey(), $('copyTpl').value); }
 
+/* 复制前校验数据归属，防止切换品种时拷到旧数据 */
+function assertFresh() {
+  if (!S.chartOwner || S.chartOwner.sym !== S.currentSymbol || S.chartOwner.dur !== S.currentDur) {
+    toast("数据更新中，请稍候再复制");
+    return false;
+  }
+  return true;
+}
+
 function renderTable() {
   const N = 80;
   const rows = S.chartRows.slice(-N);
@@ -53,11 +62,6 @@ function fallbackCopy(t) {
   document.body.removeChild(ta);
 }
 
-/* ---- 核心：按模板格式化一行（11 个变量，零分支）----
-   {date}       自然日                        {start}     完整起始
-   {end}        完整结束                      {time_start} 钟表起始
-   {time_end}   钟表结束                      {open} {close} {high} {low} {volume} {oi} {chg}
-   兼容兜底：{range} {start_full} */
 function formatRow(r, gi) {
   const startMs = r[0];
   const endMs = startMs + S.currentDur * 1000;
@@ -83,10 +87,8 @@ function formatRow(r, gi) {
     end: fmtFull(endMs),
     time_start: tc,
     time_end: te,
-    // 旧变量映射兜底
     range: S.currentDur >= 86400 ? dateStr : `${tc}-${te}`,
     start_full: fmtFull(startMs),
-    // 价格量仓
     open: fmt(r[1], d), close: fmt(r[4], d),
     high: fmt(r[2], d), low: fmt(r[3], d),
     volume: fmt(r[5], 0), oi: fmt(r[6], 0),
@@ -99,7 +101,7 @@ function formatRow(r, gi) {
 
 function copyRow(gi) {
   const r = S.chartRows[gi];
-  if (!r) return;
+  if (!r || !assertFresh()) return;
   const text = formatRow(r, gi);
   copyText(text);
   toast("已复制：" + text.replace(/\t/g, "  |  "));
@@ -108,20 +110,19 @@ function copyRow(gi) {
 function copyAll() {
   const rows = S.chartRows;
   if (!rows.length) { toast("暂无数据"); return; }
+  if (!assertFresh()) return;
   const text = rows.map((r, gi) => formatRow(r, gi).replace(/\n+$/, "")).join("\n");
   copyText(text);
   toast(`已复制 ${rows.length} 根K线数据（按模板格式）`);
 }
 
 export function initTable() {
-  // 迁移旧 key: copyTpl → copyTplMin + copyTplDay
   const legacy = localStorage.getItem('copyTpl');
   if (legacy) {
     localStorage.setItem('copyTplMin', legacy);
     localStorage.setItem('copyTplDay', legacy);
     localStorage.removeItem('copyTpl');
   }
-
   loadTplInput();
 
   $('copyTpl').addEventListener('change', saveTpl);

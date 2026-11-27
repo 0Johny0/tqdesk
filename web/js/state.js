@@ -1,6 +1,7 @@
 export const S = {
   allProducts: [], exchFilter: "ALL", currentProduct: null,
-  currentSymbol: "", currentDur: 86400, chartRows: [], hoverIdx: null,
+  currentSymbol: "", currentDur: 86400,
+  chartRows: [], chartOwner: null, hoverIdx: null,
   seqQ: 0, seqS: 0, seqK: 0, refreshing: false, wasOffline: false,
   favs: [],
 };
@@ -17,7 +18,6 @@ export const EXCH_NAMES = {
 };
 export const exchName = e => EXCH_NAMES[e] || e;
 
-/* 自选持久化（唯一读写出口） */
 export function loadFavs() {
   try { S.favs = JSON.parse(localStorage.getItem('favSymbols') || '[]') || []; }
   catch (e) { S.favs = []; }
