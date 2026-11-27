@@ -4,7 +4,8 @@ import json
 import threading
 from pathlib import Path
 
-_PREFS_FILE = Path(__file__).parent.parent / "data" / "user_prefs.json"
+# 可变数据目录（与代码目录 data/ 分离，容器单独挂载持久化）
+_PREFS_FILE = Path(__file__).parent.parent / "user_data" / "user_prefs.json"
 _lock = threading.Lock()
 
 
